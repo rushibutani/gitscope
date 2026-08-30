@@ -1,302 +1,151 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ProfileCard from "../components/features/ProfileCard";
+import ContributionChart from "../components/features/ContributionChart";
+import LanguageChart from "../components/features/LanguageChart";
+import RepoTable from "../components/features/repositories/RepoTable";
 import Footer from "./_components/Footer";
 import { fetchGitHubAnalytics } from "./actions/github";
-import type { GitHubAnalytics, ApiError } from "../types/github";
-import ErrorDisplay, { EmptyState } from "../components/ui/ErrorDisplay";
-import { ComponentErrorBoundary } from "../components/ui/ComponentErrorBoundary";
-import {
-  ActivityGridSkeleton,
-  ChartSkeleton,
-  TableSkeleton,
-} from "../components/ui/Skeletons";
-import { SearchIcon, SpinnerIcon, GitHubIcon } from "../components/ui";
-
-// Lazy-load heavy chart components
-const ContributionChart = dynamic(
-  () => import("../components/features/ContributionChart"),
-  {
-    loading: () => (
-      <div className="h-64 bg-card border border-border/50 rounded-2xl animate-pulse" />
-    ),
-  }
-);
-const LanguageChart = dynamic(
-  () => import("../components/features/LanguageChart"),
-  {
-    loading: () => (
-      <div className="h-64 bg-card border border-border/50 rounded-2xl animate-pulse" />
-    ),
-  }
-);
-const ActivityScore = dynamic(
-  () => import("../components/features/ActivityScore"),
-  {
-    loading: () => (
-      <div className="h-64 bg-card border border-border/50 rounded-2xl animate-pulse" />
-    ),
-  }
-);
-const RepoTable = dynamic(
-  () => import("../components/features/repositories/RepoTable"),
-  {
-    loading: () => (
-      <div className="h-96 bg-card border border-border/50 rounded-2xl animate-pulse" />
-    ),
-  }
-);
+import type { ApiError, GitHubAnalytics, RepositoryDisplay } from "../types/github";
+import { ActivityIcon, ExternalLinkIcon, GitHubIcon, LayersIcon, RepositoryIcon, SearchIcon, SpinnerIcon } from "../components/ui";
+import { formatCompactNumber } from "../lib/utils/formatting";
 
 type PageState = "empty" | "loading" | "error" | "success";
+const normalizeUsername = (value: string) => value.trim().replace(/^@+/, "");
 
 export default function ClientPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialUser = searchParams.get("user");
-
-  const [username, setUsername] = useState(initialUser || "");
-  const [searchValue, setSearchValue] = useState(initialUser || "");
-  const [pageState, setPageState] = useState<PageState>(
-    initialUser ? "loading" : "empty"
-  );
+  const initialUser = normalizeUsername(searchParams.get("user") || "");
+  const [searchValue, setSearchValue] = useState(initialUser);
+  const [username, setUsername] = useState(initialUser);
+  const [pageState, setPageState] = useState<PageState>(initialUser ? "loading" : "empty");
   const [analytics, setAnalytics] = useState<GitHubAnalytics | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [validation, setValidation] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const [heroPassed, setHeroPassed] = useState(false);
 
-  async function fetchAnalytics(user: string) {
-    setPageState("loading");
-    setError(null);
-
-    try {
-      const result = await fetchGitHubAnalytics(user);
-
-      if (result.error) {
-        setError(result.error);
-        setPageState("error");
-      } else if (result.data) {
-        setAnalytics(result.data);
-        setPageState("success");
-        // Smooth scroll to results
-        setTimeout(() => {
-          resultsRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }, 100);
-      }
-    } catch (err) {
-      setError({
-        type: "server_error",
-        status: 500,
-        message: "An unexpected error occurred",
-      });
-      setPageState("error");
-    }
+  async function loadProfile(user: string) {
+    setPageState("loading"); setError(null);
+    const result = await fetchGitHubAnalytics(user);
+    if (result.error) { setError(result.error); setPageState("error"); return; }
+    if (result.data) { setAnalytics(result.data); setPageState("success"); }
   }
 
-  // Fetch analytics when username changes
   useEffect(() => {
-    if (username) {
-      fetchAnalytics(username);
-    }
+    if (initialUser) void loadProfile(initialUser);
+    // The initial URL is intentionally read once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedUsername = searchValue.trim();
-
-    if (!trimmedUsername) return;
-
-    setUsername(trimmedUsername);
-    // Update URL without navigation
-    router.push(`/?user=${encodeURIComponent(trimmedUsername)}`, {
-      scroll: false,
-    });
-
-    startTransition(() => {
-      fetchAnalytics(trimmedUsername);
-    });
-  };
-
-  const handleClear = () => {
-    setSearchValue("");
-    setUsername("");
-    setPageState("empty");
-    setAnalytics(null);
-    setError(null);
-    // Update URL without triggering server navigation
-    if (searchParams.get("user")) {
-      window.history.pushState({}, "", "/");
-    }
-    inputRef.current?.focus();
-  };
-
-  // Global keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Focus search with '/'
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
-        const target = e.target as HTMLElement;
-        if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-          e.preventDefault();
-          inputRef.current?.focus();
-        }
-      }
-      // Clear with Escape
-      if (e.key === "Escape" && document.activeElement === inputRef.current) {
-        if (searchValue) {
-          setSearchValue("");
-        } else {
-          inputRef.current?.blur();
-        }
-      }
+    if (pageState !== "empty") { setHeroPassed(true); return; }
+    const hero = heroRef.current;
+    if (!hero) return;
+    const observer = new IntersectionObserver(([entry]) => setHeroPassed(!entry.isIntersecting), { rootMargin: "-64px 0px 0px" });
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [pageState]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "/" && !event.metaKey && !event.ctrlKey && !["INPUT", "TEXTAREA"].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); inputRef.current?.focus(); }
     };
+    window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [searchValue]);
+  function submit(value = searchValue) {
+    const clean = normalizeUsername(value);
+    if (!clean) { setValidation("Enter a GitHub username to continue."); inputRef.current?.focus(); return; }
+    if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(clean)) { setValidation("Use a valid GitHub username (letters, numbers, and hyphens)."); inputRef.current?.focus(); return; }
+    setValidation(""); setSearchValue(clean); setUsername(clean);
+    router.push(`/?user=${encodeURIComponent(clean.toLowerCase())}`, { scroll: false });
+    void loadProfile(clean);
+  }
+  const loading = pageState === "loading";
 
-  const isLoading = pageState === "loading" || isPending;
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-background focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-      >
-        Skip to main content
-      </a>
-
-      {/* Consistent Sticky Header - Always Same Layout */}
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <button
-              onClick={handleClear}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
-                <GitHubIcon size={20} className="text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">
-                  GitHub Analytics
-                </h1>
-                <p className="text-xs text-muted">
-                  Discover developer insights
-                </p>
-              </div>
-            </button>
-
-            {/* Search Form - Always Visible */}
-            <form
-              onSubmit={handleSearch}
-              className="flex gap-2 w-full sm:w-auto"
-              role="search"
-            >
-              <div className="relative flex-1 sm:w-80">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder="Enter GitHub username..."
-                  className="w-full px-4 py-2.5 pl-10 bg-background border border-border rounded-xl text-foreground text-sm placeholder-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  disabled={isLoading}
-                  aria-label="GitHub username"
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-                <SearchIcon
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted/60"
-                  aria-hidden="true"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading || !searchValue.trim()}
-                className="px-5 py-2.5 bg-primary text-background text-sm font-medium rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
-                aria-label="Analyze GitHub profile"
-              >
-                {isLoading ? (
-                  <>
-                    <SpinnerIcon aria-hidden="true" />
-                    <span className="hidden sm:inline">Analyzing</span>
-                  </>
-                ) : (
-                  "Analyze"
-                )}
-              </button>
-            </form>
-          </div>
+  return <div className="min-h-screen bg-background text-foreground">
+    <a href="#main-content" className="skip-link">Skip to content</a>
+    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 md:h-16 md:flex-row md:items-center md:justify-between md:py-0 lg:px-8">
+        <button onClick={() => { router.push("/"); setPageState("empty"); setAnalytics(null); setSearchValue(""); }} className="focus-ring flex items-center gap-3 rounded-lg text-left" aria-label="GitHub Analytics home">
+          <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface"><GitHubIcon size={17} /></span>
+          <span><span className="block text-sm font-semibold tracking-tight">GitHub Analytics</span><span className="block text-[10px] uppercase tracking-[.16em] text-muted">Developer intelligence</span></span>
+        </button>
+        <div className={`header-search ${pageState !== "empty" || heroPassed ? "header-search-visible" : ""}`}>
+          <SearchForm inputRef={pageState === "empty" ? undefined : inputRef} value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} compact />
         </div>
-      </header>
+      </div>
+    </header>
+    <main id="main-content" className="mx-auto min-h-[calc(100vh-9rem)] w-full max-w-7xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+      {pageState === "empty" && <LandingSearch value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} inputRef={inputRef} heroRef={heroRef} />}
+      {pageState === "loading" && <DashboardSkeleton />}
+      {pageState === "error" && error && <ErrorState error={error} username={username} retry={() => void loadProfile(username)} focusSearch={() => inputRef.current?.focus()} />}
+      {pageState === "success" && analytics && <Dashboard analytics={analytics} />}
+    </main>
+    <Footer />
+  </div>;
+}
 
-      {/* Main Content */}
-      <main
-        id="main-content"
-        className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8"
-      >
-        {/* Empty State */}
-        {pageState === "empty" && (
-          <div className="animate-fade-in">
-            <EmptyState />
-          </div>
-        )}
+type SearchProps = { value: string; setValue: (value: string) => void; submit: (value?: string) => void; loading: boolean; validation: string; inputRef?: React.RefObject<HTMLInputElement | null>; compact?: boolean };
 
-        {/* Loading State */}
-        {pageState === "loading" && (
-          <div className="animate-fade-in space-y-6">
-            <div className="h-48 bg-card border border-border/50 rounded-2xl animate-pulse" />
-            <ActivityGridSkeleton />
-            <ChartSkeleton />
-            <TableSkeleton />
-          </div>
-        )}
-
-        {/* Error State */}
-        {pageState === "error" && error && (
-          <div className="animate-fade-in" ref={resultsRef}>
-            <ErrorDisplay error={error} username={username} />
-          </div>
-        )}
-
-        {/* Success State - Analytics Dashboard */}
-        {pageState === "success" && analytics && (
-          <div className="animate-fade-in space-y-6" ref={resultsRef}>
-            {/* Profile Overview */}
-            <ProfileCard profile={analytics.profile} />
-
-            {/* Analytics Grid */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <ComponentErrorBoundary componentName="Activity Score">
-                <ActivityScore activity={analytics.activity} />
-              </ComponentErrorBoundary>
-              <ComponentErrorBoundary componentName="Contribution Chart">
-                <ContributionChart contributions={analytics.contributions} />
-              </ComponentErrorBoundary>
-            </div>
-
-            {/* Language Distribution */}
-            <ComponentErrorBoundary componentName="Language Chart">
-              <LanguageChart languages={analytics.languages} />
-            </ComponentErrorBoundary>
-
-            {/* Repository Table */}
-            <ComponentErrorBoundary componentName="Repository Table">
-              <RepoTable repositories={analytics.repositories} />
-            </ComponentErrorBoundary>
-          </div>
-        )}
-      </main>
-
-      <Footer />
+function SearchForm({ value, setValue, submit, loading, validation, inputRef, compact }: SearchProps) {
+  return <form role="search" onSubmit={(e) => { e.preventDefault(); submit(); }} className={`search-form ${compact ? "md:max-w-[520px]" : "max-w-2xl"}`}>
+    <div className="relative min-w-0 flex-1">
+      {!compact && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 border-r border-border pr-3 font-mono text-xs text-muted">github.com/</span>}
+      {compact && <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />}
+      <input ref={inputRef} value={value} onChange={(e) => setValue(e.target.value)} disabled={loading} aria-invalid={!!validation} aria-describedby={validation ? "search-error" : undefined} aria-label="GitHub username" autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="e.g. torvalds" className={`search-input ${compact ? "pl-9" : "pl-[106px]"}`} />
     </div>
-  );
+    <button className="primary-button" disabled={loading} type="submit">{loading ? <><SpinnerIcon /> Analyzing…</> : "Analyze profile"}</button>
+    {validation && <p id="search-error" role="alert" className="basis-full text-left text-xs text-danger">{validation}</p>}
+  </form>;
+}
+
+function LandingSearch(props: SearchProps & { heroRef: React.RefObject<HTMLElement | null> }) {
+  return <section ref={props.heroRef} className="mx-auto flex max-w-5xl flex-col items-center pt-8 text-center md:pt-16">
+    <p className="eyebrow">GitHub developer insights</p>
+    <h1 className="mt-5 max-w-3xl text-balance text-4xl font-semibold tracking-[-.04em] sm:text-5xl">Understand any GitHub profile at a glance.</h1>
+    <p className="mt-5 max-w-2xl text-balance text-base leading-7 text-muted">Explore repositories, languages, activity patterns, and public development signals from GitHub data.</p>
+    <div className="mt-8 w-full"><SearchForm {...props} /></div>
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted"><span>Try an example</span>{["torvalds", "sindresorhus", "gaearon"].map((name) => <button key={name} onClick={() => props.submit(name)} className="focus-ring rounded font-mono text-foreground transition-colors hover:text-primary">{name}</button>)}</div>
+    <div className="mt-16 w-full border-y border-border text-left"><div className="grid md:grid-cols-3">{[["01", "Activity", "Public repository update patterns across the last year.", ActivityIcon], ["02", "Stack", "Languages represented across original public repositories.", LayersIcon], ["03", "Repositories", "Projects ranked by stars, forks, and recency.", RepositoryIcon]].map(([number, title, copy, Icon], index) => <div key={title as string} className={`preview-item ${index ? "md:border-l md:border-border" : ""}`}><div className="flex items-center gap-3 text-primary"><Icon size={20} /><span className="font-mono text-xs">{number as string}</span></div><h2 className="mt-7 text-base font-medium">{title as string}</h2><p className="mt-2 text-sm leading-6 text-muted">{copy as string}</p></div>)}</div></div>
+  </section>;
+}
+
+function Dashboard({ analytics }: { analytics: GitHubAnalytics }) {
+  const { profile, activity, repositories, languages, contributions } = analytics;
+  const totalForks = repositories.reduce((sum, repo) => sum + repo.forks, 0);
+  return <div className="space-y-14"><ProfileCard profile={profile} />
+    <section aria-label="Key profile metrics" className="metric-strip">{[["Total stars", activity.totalStars], ["Total forks", totalForks], [contributions.source === "github" ? "Contributions" : "Updated repos", contributions.totalContributions]].map(([label, value]) => <div key={label} className="metric-item"><strong title={Number(value).toLocaleString()}>{formatCompactNumber(Number(value))}</strong><span>{label}</span></div>)}</section>
+    {!repositories.length ? <section className="rounded-xl border border-border bg-surface px-6 py-14 text-center"><p className="eyebrow">No repositories yet</p><h2 className="mt-3 text-2xl font-semibold">Nothing to analyze</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted">This account has no original public repositories, so language, activity, and repository insights aren’t available yet.</p></section> : <><ContributionChart contributions={contributions} activity={activity} />
+    <div className="grid gap-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,.55fr)]"><LanguageChart languages={languages} /><ProfileSignals analytics={analytics} /></div>
+    <RepositoryHighlights repositories={repositories} /><RepoTable repositories={repositories} /></>}
+  </div>;
+}
+
+function ProfileSignals({ analytics }: { analytics: GitHubAnalytics }) {
+  const { languages, repositories, activity } = analytics; const top = languages[0];
+  const totalStars = repositories.reduce((sum, r) => sum + r.stars, 0); const topShare = totalStars && repositories[0] ? Math.round((repositories[0].stars / totalStars) * 100) : 0;
+  const topRepo = [...repositories].sort((a, b) => b.stars - a.stars)[0];
+  const signals = [["Primary language", top ? `${top.language} · ${top.percentage.toFixed(1)}% of analyzed code` : "No language data"], ["Language breadth", languages.length ? `${languages.length} language${languages.length === 1 ? "" : "s"} represented` : "Not available"], ["Repository concentration", totalStars ? `${topShare}% of stars belong to the top repository (${topRepo.name})` : "No stars across analyzed repositories"], ["Recent maintenance", `${activity.activeReposCount} repos updated in the last 3 months`]];
+  return <section><SectionHeading title="Profile Signals" description="Deterministic observations from public data." /><dl className="mt-6 divide-y divide-border border-y border-border">{signals.map(([term, detail]) => <div key={term} className="py-4"><dt className="text-xs uppercase tracking-wider text-muted">{term}</dt><dd className="mt-1.5 text-sm leading-6">{detail}</dd></div>)}</dl></section>;
+}
+
+function RepositoryHighlights({ repositories }: { repositories: RepositoryDisplay[] }) {
+  if (!repositories.length) return null;
+  const starred = [...repositories].sort((a,b) => b.stars-a.stars)[0];
+  const pickDifferent = (sorted: RepositoryDisplay[], used: Set<number>) => sorted.find(repo => !used.has(repo.id)) || sorted[0];
+  const used = new Set([starred.id]);
+  const forked = pickDifferent([...repositories].sort((a,b) => b.forks-a.forks), used); used.add(forked.id);
+  const recent = pickDifferent([...repositories].sort((a,b) => new Date(b.updatedAtIso).getTime()-new Date(a.updatedAtIso).getTime()), used);
+  return <section><SectionHeading title="Repository Highlights" description="Notable projects based on stars, forks, and recent activity." /><div className="mt-6 grid border-y border-border md:grid-cols-3">{[["Most starred", starred, `${formatCompactNumber(starred.stars)} stars`], ["Most forked", forked, `${formatCompactNumber(forked.forks)} forks`], ["Recently updated", recent, recent.updatedAt]].map(([label, repo, stat], i) => { const item = repo as RepositoryDisplay; return <a key={label as string} href={item.url} target="_blank" rel="noreferrer" className={`highlight-row ${i ? "md:border-l md:border-border" : ""}`}><span className="text-xs text-muted">{label as string}</span><strong className="mt-5 flex items-center gap-2 truncate font-mono text-sm font-medium">{item.name}<ExternalLinkIcon /></strong><span className="mt-2 text-xs text-muted">{stat as string}</span></a>; })}</div></section>;
+}
+
+function SectionHeading({ title, description }: { title: string; description: string }) { return <div><h2 className="text-xl font-semibold tracking-tight">{title}</h2><p className="mt-1.5 text-sm text-muted">{description}</p></div>; }
+function DashboardSkeleton() { return <div aria-label="Analyzing profile" aria-busy="true" className="space-y-10"><span className="sr-only">Analyzing profile</span><div className="skeleton h-36"/><div className="grid grid-cols-2 gap-px border-y border-border py-6 md:grid-cols-3">{[1,2,3].map(i=><div key={i} className="px-4"><div className="skeleton h-8 w-20"/><div className="skeleton mt-3 h-3 w-24"/></div>)}</div><div className="skeleton h-72"/><div className="grid gap-8 md:grid-cols-2"><div className="skeleton h-72"/><div className="skeleton h-72"/></div><div className="skeleton h-80"/></div>; }
+function ErrorState({ error, username, retry, focusSearch }: { error: ApiError; username: string; retry: () => void; focusSearch: () => void }) {
+  const content = error.type === "not_found" ? ["User not found", `We couldn't find a public GitHub profile for @${username}.`] : error.type === "rate_limit" ? ["GitHub rate limit reached", "GitHub's API limit has been reached. Please try again shortly."] : error.type === "network_error" ? ["Connection interrupted", "We couldn't reach GitHub. Check your connection and try again."] : ["Something went wrong", "The profile couldn't be analyzed right now. Please try again."];
+  return <section role="alert" aria-live="polite" className="mx-auto max-w-xl border-y border-border py-16 text-center"><p className="eyebrow">Analysis unavailable</p><h1 className="mt-4 text-3xl font-semibold tracking-tight">{content[0]}</h1><p className="mt-3 text-sm leading-6 text-muted">{content[1]}</p><div className="mt-7 flex justify-center gap-3"><button className="secondary-button" onClick={focusSearch}>Try another username</button>{error.type !== "not_found" && <button className="primary-button" onClick={retry}>Retry</button>}</div></section>;
 }

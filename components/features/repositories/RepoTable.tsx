@@ -1,123 +1,43 @@
 "use client";
+import { useMemo, useState } from "react";
+import type { RepositoryDisplay } from "../../../types/github";
+import { ExternalLinkIcon, SearchIcon } from "../../ui";
+import { formatCompactNumber } from "../../../lib/utils/formatting";
 
-import { RepositoryDisplay } from "../../../types/github";
-import { useState, useCallback } from "react";
-import RepoRow from "./RepoRow";
-import RepoTableHeader from "./RepoTableHeader";
-import { useFilteredRepos, SortOption } from "../../../lib/hooks";
-import { Card, EmptyState } from "../../ui";
+type SortKey = "name" | "language" | "stars" | "forks" | "updated";
+type SortDirection = "asc" | "desc";
+const PAGE_SIZE = 20;
 
-interface RepoTableProps {
-  repositories: RepositoryDisplay[];
-}
-
-export default function RepoTable({ repositories }: RepoTableProps) {
-  const [sortBy, setSortBy] = useState<SortOption>("stars");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Memoize callbacks to prevent child re-renders
-  const handleSortChange = useCallback((sort: SortOption) => {
-    setSortBy(sort);
-  }, []);
-
-  const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  // Use custom hook for filtering and sorting
-  const sortedAndFilteredRepos = useFilteredRepos(
-    repositories,
-    searchQuery,
-    sortBy
-  );
-
-  if (repositories.length === 0) {
-    return (
-      <Card>
-        <h2 className="text-lg font-medium text-foreground/90 mb-4">
-          Repository Insights
-        </h2>
-        <EmptyState size="sm" title="No public repositories found" />
-      </Card>
-    );
+export default function RepoTable({ repositories }: { repositories: RepositoryDisplay[] }) {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("stars");
+  const [direction, setDirection] = useState<SortDirection>("desc");
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const rows = needle ? repositories.filter(repo => [repo.name, repo.description, repo.language].some(value => value.toLowerCase().includes(needle))) : repositories;
+    return [...rows].sort((a, b) => {
+      const multiplier = direction === "asc" ? 1 : -1;
+      if (sortKey === "name") return a.name.localeCompare(b.name) * multiplier;
+      if (sortKey === "language") return a.language.localeCompare(b.language) * multiplier;
+      if (sortKey === "updated") return (new Date(a.updatedAtIso).getTime() - new Date(b.updatedAtIso).getTime()) * multiplier;
+      return (a[sortKey] - b[sortKey]) * multiplier;
+    });
+  }, [repositories, query, sortKey, direction]);
+  const visible = filtered.slice(0, limit);
+  function sortBy(key: SortKey) {
+    setLimit(PAGE_SIZE);
+    if (key === sortKey) setDirection(current => current === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setDirection(key === "name" || key === "language" ? "asc" : "desc"); }
   }
-
-  return (
-    <Card variant="interactive">
-      <div className="space-y-4">
-        {/* Header - Memoized Component */}
-        <RepoTableHeader
-          sortBy={sortBy}
-          searchQuery={searchQuery}
-          onSortChange={handleSortChange}
-          onSearchChange={handleSearchChange}
-        />
-
-        {/* Results count */}
-        <div className="text-xs text-muted">
-          Showing {sortedAndFilteredRepos.length} of {repositories.length}{" "}
-          repositories
-        </div>
-
-        {/* Table */}
-        <div
-          className="overflow-x-auto"
-          role="region"
-          aria-label="Repository table"
-        >
-          <table className="w-full" aria-label="List of GitHub repositories">
-            <thead>
-              <tr className="border-b border-border">
-                <th
-                  className="text-left py-3 px-2 sm:px-4 text-xs font-medium text-muted"
-                  scope="col"
-                >
-                  Repository
-                </th>
-                <th
-                  className="text-left py-3 px-4 text-xs font-medium text-muted hidden md:table-cell"
-                  scope="col"
-                >
-                  Language
-                </th>
-                <th
-                  className="text-right py-3 px-4 text-xs font-medium text-muted hidden md:table-cell"
-                  scope="col"
-                >
-                  Stars
-                </th>
-                <th
-                  className="text-right py-3 px-4 text-xs font-medium text-muted hidden sm:table-cell"
-                  scope="col"
-                >
-                  Forks
-                </th>
-                <th
-                  className="text-right py-3 px-4 text-xs font-medium text-muted hidden lg:table-cell"
-                  scope="col"
-                >
-                  Updated
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedAndFilteredRepos.map((repo, index) => {
-                // Compute variant in parent to avoid prop drilling
-                let variant: "featured" | "latest" | "default" = "default";
-                if (index === 0) {
-                  variant = sortBy === "stars" ? "featured" : "latest";
-                }
-
-                return <RepoRow key={repo.id} repo={repo} variant={variant} />;
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {sortedAndFilteredRepos.length === 0 && (
-          <EmptyState size="sm" title="No repositories match your search" />
-        )}
-      </div>
-    </Card>
-  );
+  const headers: [string, SortKey][] = [["Repository", "name"], ["Language", "language"], ["Stars", "stars"], ["Forks", "forks"], ["Updated", "updated"]];
+  return <section aria-labelledby="repository-heading"><div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"><div><h2 id="repository-heading" className="text-xl font-semibold tracking-tight">Repository Explorer</h2><p className="mt-1.5 text-sm text-muted">Explore public repositories by popularity and activity.</p></div>
+    <label className="relative"><span className="sr-only">Search repositories</span><SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/><input value={query} onChange={event => { setQuery(event.target.value); setLimit(PAGE_SIZE); }} className="control-input pl-9" placeholder="Search repositories"/></label></div>
+    <p className="mt-5 text-xs text-muted">Showing {visible.length} of {filtered.length} matching repositories</p><div className="mt-3 border-y border-border">
+      <div className="hidden grid-cols-[minmax(0,1fr)_140px_90px_90px_130px] gap-4 border-b border-border px-4 py-3 text-[11px] uppercase tracking-wider text-muted md:grid">{headers.map(([label, key], index) => <button key={key} type="button" onClick={() => sortBy(key)} className={`focus-ring flex items-center gap-1 rounded hover:text-foreground ${index > 1 ? "justify-end" : ""}`} aria-label={`Sort by ${label}, ${sortKey === key ? direction : "inactive"}`}>{label}<span aria-hidden="true">{sortKey === key ? (direction === "asc" ? "↑" : "↓") : "↕"}</span></button>)}</div>
+      <div className="divide-y divide-border">{visible.map(repo => <article key={repo.id} className="repo-row"><div className="min-w-0"><a href={repo.url} target="_blank" rel="noreferrer" className="focus-ring inline-flex max-w-full items-center gap-2 rounded font-mono text-sm font-medium hover:text-primary"><span className="truncate">{repo.name}</span><ExternalLinkIcon className="shrink-0"/></a><p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{repo.description}</p><div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted md:hidden"><Language repo={repo}/><span aria-label={`${repo.stars} stars`}>★ {formatCompactNumber(repo.stars)}</span><span>{formatCompactNumber(repo.forks)} forks</span><span>{repo.updatedAt}</span></div></div><div className="hidden md:block"><Language repo={repo}/></div><span className="hidden text-right font-mono text-xs md:block">{formatCompactNumber(repo.stars)}</span><span className="hidden text-right font-mono text-xs text-muted md:block">{formatCompactNumber(repo.forks)}</span><span className="hidden text-right text-xs text-muted md:block">{repo.updatedAt}</span></article>)}</div>
+      {!filtered.length && <p className="py-10 text-center text-sm text-muted">No repositories match your search.</p>}
+    </div>{visible.length < filtered.length && <div className="mt-6 text-center"><button type="button" className="secondary-button" onClick={() => setLimit(current => current + PAGE_SIZE)}>Load more</button></div>}
+  </section>;
 }
+function Language({ repo }: { repo: RepositoryDisplay }) { return <span className="inline-flex items-center gap-2 text-xs text-muted"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: repo.languageColor }}/>{repo.language || "Unknown"}</span>; }

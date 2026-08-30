@@ -2,6 +2,7 @@ import {
   GitHubUser,
   GitHubRepository,
   ContributionCalendar,
+  ContributionDay,
   ContributionWeek,
   ApiError,
 } from "../types/github";
@@ -10,6 +11,7 @@ import { retryWithBackoff } from "./utils/retry";
 import { logger } from "./utils/logger";
 
 const GITHUB_API_BASE = "https://api.github.com";
+let configuredTokenIsUsable = true;
 
 // Language color mapping (subset of popular languages)
 export const LANGUAGE_COLORS: Record<string, string> = {
@@ -32,14 +34,14 @@ export const LANGUAGE_COLORS: Record<string, string> = {
   CSS: "#563d7c",
   Vue: "#41b883",
   Svelte: "#ff3e00",
-  Jupyter: "#DA5B0B",
+  "Jupyter Notebook": "#DA5B0B",
   R: "#198CE7",
   Scala: "#c22d40",
   Elixir: "#6e4a7e",
   Haskell: "#5e5086",
   Lua: "#000080",
   Perl: "#0298c3",
-  Objective: "#438eff",
+  "Objective-C": "#438eff",
 };
 
 export class GitHubApiError extends Error {
@@ -62,17 +64,41 @@ async function fetchWithErrorHandling<T>(url: string): Promise<T> {
         };
 
         // Use GitHub token if available (increases rate limit from 60 to 5000/hour)
-        const token = env.GITHUB_TOKEN;
+        const token = configuredTokenIsUsable ? env.GITHUB_TOKEN : undefined;
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(url, {
+        let response = await fetch(url, {
           headers,
           next: { revalidate: 3600 }, // Cache for 1 hour
         });
 
+        // A token is optional for every endpoint used by this application.
+        // If a locally configured token has expired or been revoked, retry the
+        // public request without credentials instead of failing the profile.
+        if (response.status === 401 && token) {
+          configuredTokenIsUsable = false;
+          logger.warn("GitHub token was rejected; retrying anonymously", {
+            url,
+          });
+          response = await fetch(url, {
+            headers: {
+              Accept: "application/vnd.github.v3+json",
+            },
+            next: { revalidate: 3600 },
+          });
+        }
+
         if (!response.ok) {
+          if (response.status === 401) {
+            throw new GitHubApiError(
+              "GitHub authentication failed",
+              401,
+              "server_error"
+            );
+          }
+
           if (response.status === 404) {
             throw new GitHubApiError("GitHub user not found", 404, "not_found");
           }
@@ -164,8 +190,92 @@ export async function fetchRepositoryLanguages(
 }
 
 /**
- * Generate synthetic contribution data based on repository activity
- * In production, you'd use GitHub GraphQL API or scrape contribution graph
+ * Fetch the real public contribution calendar rendered by GitHub profiles.
+ * GitHub's REST user endpoint does not expose this data, while this public
+ * profile endpoint includes exact daily counts and GitHub's intensity levels.
+ */
+export async function fetchPublicContributionCalendar(
+  username: string
+): Promise<ContributionCalendar> {
+  const response = await fetch(
+    `https://github.com/users/${encodeURIComponent(username)}/contributions`,
+    {
+      headers: {
+        Accept: "text/html",
+        "User-Agent": "github-profile-analytics",
+      },
+      next: { revalidate: 3600 },
+    }
+  );
+
+  if (!response.ok) {
+    throw new GitHubApiError(
+      "GitHub contribution data is unavailable",
+      response.status,
+      response.status === 429 ? "rate_limit" : "server_error"
+    );
+  }
+
+  const html = await response.text();
+  const tooltipCounts = new Map<string, number>();
+  const tooltipPattern =
+    /<tool-tip[^>]*for="([^"]+)"[^>]*>([^<]*)<\/tool-tip>/g;
+
+  for (const match of html.matchAll(tooltipPattern)) {
+    const countMatch = match[2].match(/([\d,]+) contribution/);
+    tooltipCounts.set(
+      match[1],
+      countMatch ? Number(countMatch[1].replace(/,/g, "")) : 0
+    );
+  }
+
+  const days: ContributionDay[] = [];
+  const cellPattern = /<td[^>]*data-date="([^"]+)"[^>]*id="([^"]+)"[^>]*data-level="([0-4])"[^>]*>/g;
+
+  for (const match of html.matchAll(cellPattern)) {
+    days.push({
+      date: match[1],
+      count: tooltipCounts.get(match[2]) ?? 0,
+      level: Number(match[3]) as ContributionDay["level"],
+    });
+  }
+
+  if (days.length < 300) {
+    throw new GitHubApiError(
+      "GitHub contribution data could not be read",
+      502,
+      "server_error"
+    );
+  }
+
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  const weekMap = new Map<string, ContributionDay[]>();
+
+  for (const day of days) {
+    const date = new Date(`${day.date}T00:00:00`);
+    date.setDate(date.getDate() - date.getDay());
+    const weekKey = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+    const week = weekMap.get(weekKey) ?? [];
+    week.push(day);
+    weekMap.set(weekKey, week);
+  }
+
+  return {
+    totalContributions: days.reduce((sum, day) => sum + day.count, 0),
+    weeks: Array.from(weekMap.values()).map((contributionDays) => ({
+      contributionDays,
+    })),
+    source: "github",
+  };
+}
+
+/**
+ * Build a calendar of public repository update signals. This is deliberately
+ * not presented as a commit or GitHub contribution count.
  */
 export async function generateContributionCalendar(
   repositories: GitHubRepository[]
@@ -188,7 +298,7 @@ export async function generateContributionCalendar(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Estimate contributions from repository activity
+  // Record repository update signals from public pushed_at timestamps.
   repositories.forEach((repo) => {
     const pushedDate = new Date(repo.pushed_at);
     if (pushedDate >= oneYearAgo && pushedDate <= now) {
@@ -223,7 +333,7 @@ export async function generateContributionCalendar(
     });
 
     // Start new week on Sunday
-    if (currentDate.getDay() === 6 || currentDate.getTime() === now.getTime()) {
+    if (currentDate.getDay() === 6) {
       weeks.push(currentWeek);
       currentWeek = { contributionDays: [] };
     }
@@ -231,9 +341,17 @@ export async function generateContributionCalendar(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
+  // The range usually ends mid-week. Always retain that final partial week;
+  // comparing timestamps with `now` is unreliable across daylight-saving
+  // changes and previously caused the last cell to be omitted.
+  if (currentWeek.contributionDays.length > 0) {
+    weeks.push(currentWeek);
+  }
+
   return {
     totalContributions,
     weeks,
+    source: "repository_updates",
   };
 }
 

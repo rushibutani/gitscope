@@ -15,9 +15,9 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GitHub Profile Analytics | Developer Insights Dashboard",
+  title: "GitHub Analytics | Developer Intelligence",
   description:
-    "Comprehensive GitHub profile analytics with contribution patterns, language statistics, and repository insights. Built for recruiters and developers.",
+    "Developer insights from public GitHub data. Explore repositories, languages, and public activity signals.",
   keywords: [
     "GitHub",
     "Analytics",

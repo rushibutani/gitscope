@@ -113,6 +113,7 @@ export function transformRepositories(
       language: repo.language || "Unknown",
       languageColor: getLanguageColor(repo.language || ""),
       updatedAt: formatDate(repo.updated_at),
+      updatedAtIso: repo.updated_at,
       isStale: isRepositoryStale(repo.updated_at),
       url: repo.html_url,
     }))
@@ -133,13 +134,17 @@ export function calculateActivityMetrics(
     now.getDate()
   );
 
-  // Count active repositories (updated in last 6 months)
-  const activeRepos = repositories.filter(
+  // Keep activity, stars, and the repository explorer on the same scope:
+  // original public repositories only (forks are excluded).
+  const ownRepositories = repositories.filter((repo) => !repo.fork);
+
+  // Count repositories updated in the last three months.
+  const activeRepos = ownRepositories.filter(
     (repo) => new Date(repo.updated_at) > threeMonthsAgo
   );
 
   // Calculate total stars
-  const totalStars = repositories.reduce(
+  const totalStars = ownRepositories.reduce(
     (sum, repo) => sum + repo.stargazers_count,
     0
   );

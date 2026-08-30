@@ -28,6 +28,14 @@ export function formatNumber(num: number): string {
   return num.toLocaleString();
 }
 
+export function formatCompactNumber(num: number): string {
+  if (num < 1000) return num.toLocaleString();
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: num < 10000 ? 1 : 0,
+  }).format(num);
+}
+
 /**
  * Calculate account age in human-readable format
  */

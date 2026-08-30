@@ -4,6 +4,7 @@ import {
   fetchUserProfile,
   fetchUserRepositories,
   fetchRepositoryLanguages,
+  fetchPublicContributionCalendar,
   generateContributionCalendar,
   GitHubApiError,
 } from "../../lib/github-api";
@@ -39,9 +40,10 @@ export async function fetchGitHubAnalytics(username: string): Promise<{
     }
 
     // Sanitize username to prevent injection
-    cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, "");
+    const normalizedUsername = username.trim().replace(/^@+/, "");
+    cleanUsername = normalizedUsername.replace(/[^a-zA-Z0-9-]/g, "");
 
-    if (cleanUsername !== username.trim()) {
+    if (cleanUsername !== normalizedUsername) {
       return {
         error: {
           message: "Username contains invalid characters",
@@ -108,8 +110,18 @@ export async function fetchGitHubAnalytics(username: string): Promise<{
       // Better to show something than nothing
     });
 
-    // Generate contribution calendar
-    const contributions = await generateContributionCalendar(repositories);
+    // Prefer GitHub's real public contribution calendar. Retain a transparent
+    // repository-update fallback if that separate public endpoint is unavailable.
+    let contributions;
+    try {
+      contributions = await fetchPublicContributionCalendar(cleanUsername);
+    } catch (error) {
+      logger.warn("Real contribution calendar unavailable; using repository updates", {
+        username: cleanUsername,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      contributions = await generateContributionCalendar(repositories);
+    }
 
     // Transform all data
     const analytics = transformGitHubData(

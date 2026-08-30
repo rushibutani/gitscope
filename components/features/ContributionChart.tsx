@@ -1,171 +1,163 @@
 "use client";
 
-import { ContributionCalendar } from "../../types/github";
 import { useState } from "react";
+import type {
+  ActivityMetrics,
+  ContributionCalendar,
+  ContributionDay,
+} from "../../types/github";
 import { getLevelColor } from "../../lib/utils/color-helpers";
-import { formatDate } from "../../lib/utils/formatting";
-import { Card } from "../ui";
+import { formatCompactNumber, formatDate } from "../../lib/utils/formatting";
 
 interface ContributionChartProps {
   contributions: ContributionCalendar;
+  activity: ActivityMetrics;
+}
+
+function dateFromIso(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 export default function ContributionChart({
   contributions,
+  activity,
 }: ContributionChartProps) {
-  const [hoveredDay, setHoveredDay] = useState<{
-    date: string;
-    count: number;
-  } | null>(null);
+  const [activeDay, setActiveDay] = useState<ContributionDay | null>(null);
+  const isRealCalendar = contributions.source === "github";
 
-  // Get month labels for the x-axis
-  const monthLabels = getMonthLabels(contributions);
+  const monthLabels = contributions.weeks.flatMap((week, weekIndex) => {
+    const monthStart = week.contributionDays.find(
+      (day) => dateFromIso(day.date).getDate() <= 7
+    );
+    if (!monthStart) return [];
 
-  // Check if activity is low
-  const isLowActivity = contributions.totalContributions < 100;
+    const date = dateFromIso(monthStart.date);
+    return [{
+      weekIndex,
+      key: `${date.getFullYear()}-${date.getMonth()}`,
+      label: date.toLocaleDateString("en-US", { month: "short" }),
+    }];
+  }).filter((label, index, labels) => (
+    index === 0 || label.key !== labels[index - 1].key
+  ));
 
   return (
-    <Card variant="interactive">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-foreground/90">
-            Contribution Activity
+    <section aria-labelledby="activity-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="activity-heading" className="text-xl font-semibold tracking-tight">
+            {isRealCalendar ? "Contribution Activity" : "Public Repository Activity"}
           </h2>
-          <div className="text-sm text-muted">
-            {contributions.totalContributions.toLocaleString()} contributions
-          </div>
+          <p className="mt-1.5 text-sm text-muted">
+            {isRealCalendar
+              ? "Daily public contributions reported by GitHub."
+              : "Repository update signals across the last 12 months."}
+          </p>
         </div>
+        <span className="font-mono text-xs text-muted">Last 12 months</span>
+      </div>
 
-        {/* Heatmap */}
-        <div className="relative">
-          {/* Month labels */}
-          <div className="flex gap-[3px] mb-2 ml-8">
-            {monthLabels.map((label, index) => (
-              <div
-                key={index}
-                className="text-[10px] text-muted font-mono"
-                style={{ width: `${label.width * 15}px` }}
-              >
-                {label.month}
-              </div>
-            ))}
-          </div>
+      <div className="mt-7 grid gap-8 border-y border-border py-7 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="min-w-0">
+          {!isRealCalendar && (
+            <p className="mb-4 text-xs leading-5 text-warning">
+              GitHub&apos;s contribution calendar is temporarily unavailable.
+              Cells currently represent latest public repository pushes.
+            </p>
+          )}
 
-          {/* Contribution grid */}
-          <div className="flex gap-[3px]">
-            {/* Day labels */}
-            <div className="flex flex-col gap-[3px] text-[10px] text-muted font-mono justify-around pr-2">
-              <div>Mon</div>
-              <div className="opacity-0">Wed</div>
-              <div>Wed</div>
-              <div className="opacity-0">Fri</div>
-              <div>Fri</div>
-              <div className="opacity-0">Sun</div>
-              <div>Sun</div>
-            </div>
-
-            {/* Weeks */}
-            <div className="flex gap-[3px] overflow-x-auto pb-2">
-              {contributions.weeks.map((week, weekIndex) => (
-                <div key={weekIndex} className="flex flex-col gap-[3px]">
-                  {week.contributionDays.map((day, dayIndex) => (
-                    <button
-                      key={dayIndex}
-                      className="w-[12px] h-[12px] rounded-[2px] cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:scale-110"
-                      style={{
-                        backgroundColor: getLevelColor(day.level),
-                      }}
-                      onMouseEnter={() =>
-                        setHoveredDay({ date: day.date, count: day.count })
-                      }
-                      onMouseLeave={() => setHoveredDay(null)}
-                      onFocus={() =>
-                        setHoveredDay({ date: day.date, count: day.count })
-                      }
-                      onBlur={() => setHoveredDay(null)}
-                      aria-label={`${day.count} contributions on ${formatDate(day.date)}`}
-                      title={`${day.count} contributions on ${formatDate(day.date)}`}
-                    />
+          <div className="overflow-x-auto pb-3" tabIndex={0} aria-label="Scrollable contribution calendar">
+            <div className="w-max min-w-full">
+              <div className="ml-10">
+                <div
+                  className="relative mb-2 h-4 text-[10px] text-muted"
+                  style={{ width: contributions.weeks.length * 15 }}
+                  aria-hidden="true"
+                >
+                  {monthLabels.map((month) => (
+                    <span
+                      key={`${month.key}-${month.weekIndex}`}
+                      className="absolute top-0"
+                      style={{ left: month.weekIndex * 15 }}
+                    >
+                      {month.label}
+                    </span>
                   ))}
                 </div>
-              ))}
+              </div>
+
+              <div className="flex gap-2">
+                <div className="grid h-[102px] w-8 shrink-0 grid-rows-7 text-[10px] leading-3 text-muted" aria-hidden="true">
+                  <span />
+                  <span>Mon</span>
+                  <span />
+                  <span>Wed</span>
+                  <span />
+                  <span>Fri</span>
+                  <span />
+                </div>
+
+                <div className="flex gap-[3px]" role="grid" aria-label="Daily GitHub contributions">
+                  {contributions.weeks.map((week, weekIndex) => (
+                    <div key={weekIndex} className="grid grid-rows-7 gap-[3px]" role="row">
+                      {week.contributionDays.map((day, dayIndex) => {
+                        const weekday = dateFromIso(day.date).getDay();
+                        return (
+                          <button
+                            key={day.date}
+                            type="button"
+                            role="gridcell"
+                            className="heat-cell focus-ring"
+                            style={{
+                              backgroundColor: getLevelColor(day.level),
+                              gridRowStart: dayIndex === 0 ? weekday + 1 : undefined,
+                            }}
+                            onMouseEnter={() => setActiveDay(day)}
+                            onMouseLeave={() => setActiveDay(null)}
+                            onFocus={() => setActiveDay(day)}
+                            onBlur={() => setActiveDay(null)}
+                            aria-label={`${day.count} contribution${day.count === 1 ? "" : "s"} on ${formatDate(day.date)}`}
+                            title={`${day.count} contribution${day.count === 1 ? "" : "s"} on ${formatDate(day.date)}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Tooltip */}
-          {hoveredDay && (
-            <div
-              className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-foreground text-card px-3 py-2 rounded-lg text-xs whitespace-nowrap shadow-lg z-10"
-              role="tooltip"
-              aria-live="polite"
-            >
-              <div className="font-semibold">
-                {hoveredDay.count} contributions
-              </div>
-              <div className="text-[10px] opacity-75">
-                {formatDate(hoveredDay.date)}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Legend */}
-        <div
-          className="flex items-center justify-between pt-2 border-t border-border"
-          role="legend"
-          aria-label="Contribution intensity scale"
-        >
-          <div className="text-xs text-muted" aria-hidden="true">
-            Less
-          </div>
-          <div className="flex gap-1">
-            {[0, 1, 2, 3, 4].map((level) => (
-              <div
-                key={level}
-                className="w-3 h-3 rounded-sm"
-                style={{
-                  backgroundColor: getLevelColor(level as 0 | 1 | 2 | 3 | 4),
-                }}
-                aria-label={`Contribution level ${level}`}
-              />
+          <div className="mt-2 flex items-center justify-end gap-2 text-[10px] text-muted" aria-label="Contribution intensity from less to more">
+            <span>Less</span>
+            {([0, 1, 2, 3, 4] as const).map((level) => (
+              <span key={level} className="h-3 w-3 rounded-[2px]" style={{ backgroundColor: getLevelColor(level) }} />
             ))}
+            <span>More</span>
           </div>
-          <div className="text-xs text-muted" aria-hidden="true">
-            More
-          </div>
+
+          <p aria-live="polite" className="mt-3 min-h-5 text-xs text-muted">
+            {activeDay
+              ? `${activeDay.count} contribution${activeDay.count === 1 ? "" : "s"} · ${formatDate(activeDay.date)}`
+              : "Focus or hover a cell for its exact contribution count."}
+          </p>
         </div>
+
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-border pt-6 lg:grid-cols-1 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+          {[
+            [isRealCalendar ? "Total contributions" : "Updated repositories", formatCompactNumber(contributions.totalContributions)],
+            ["Active repositories", activity.activeReposCount],
+            ["Monthly average", activity.averageContributionsPerMonth],
+            ["Most active month", activity.mostActiveMonth],
+          ].map(([term, detail]) => (
+            <div key={term}>
+              <dt className="text-[11px] uppercase tracking-wider text-muted">{term}</dt>
+              <dd className="mt-1.5 font-mono text-sm">{detail}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-    </Card>
+    </section>
   );
-}
-
-function getMonthLabels(
-  contributions: ContributionCalendar
-): Array<{ month: string; width: number }> {
-  const labels: Array<{ month: string; width: number }> = [];
-  let currentMonth = "";
-  let weekCount = 0;
-
-  contributions.weeks.forEach((week) => {
-    if (week.contributionDays.length > 0) {
-      const date = new Date(week.contributionDays[0].date);
-      const month = date.toLocaleDateString("en-US", { month: "short" });
-
-      if (month !== currentMonth) {
-        if (currentMonth && weekCount > 0) {
-          labels.push({ month: currentMonth, width: weekCount });
-        }
-        currentMonth = month;
-        weekCount = 1;
-      } else {
-        weekCount++;
-      }
-    }
-  });
-
-  if (currentMonth && weekCount > 0) {
-    labels.push({ month: currentMonth, width: weekCount });
-  }
-
-  return labels;
 }

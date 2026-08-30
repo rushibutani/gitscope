@@ -262,3 +262,15 @@ export function RefreshIcon({ size = 16, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function ActivityIcon({ size = 20, ...props }: IconProps) {
+  return <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12h4l2.2-6 4.2 12 2.3-6H21" /></svg>;
+}
+
+export function LayersIcon({ size = 20, ...props }: IconProps) {
+  return <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>;
+}
+
+export function RepositoryIcon({ size = 20, ...props }: IconProps) {
+  return <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" /></svg>;
+}

@@ -15,9 +15,9 @@ export async function generateMetadata({
 
   if (!username) {
     return {
-      title: "GitHub Profile Analytics | Developer Insights Dashboard",
+      title: "GitHub Analytics | Developer Intelligence",
       description:
-        "Transform GitHub data into meaningful insights. Analyze contributions, languages, and repository activity.",
+        "Developer insights from public GitHub data. Explore repositories, languages, and public activity signals.",
     };
   }
 
@@ -28,7 +28,7 @@ export async function generateMetadata({
       const { profile } = result.data;
       return {
         title: `${profile.name} (@${profile.username}) | GitHub Analytics`,
-        description: `GitHub profile analytics for ${profile.name}. ${profile.publicRepos} repositories, ${profile.followers} followers. View contribution patterns and language distribution.`,
+        description: `Public GitHub profile insights for ${profile.name}: ${profile.publicRepos} repositories and ${profile.followers} followers.`,
         openGraph: {
           title: `${profile.name}'s GitHub Analytics`,
           description:

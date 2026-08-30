@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-export type SortOption = "stars" | "recent";
+export type SortOption = "stars" | "forks" | "recent" | "name";
 
 export interface Repository {
   id: number;
@@ -9,6 +9,8 @@ export interface Repository {
   stars: number;
   language: string;
   updatedAt: string;
+  updatedAtIso?: string;
+  forks?: number;
 }
 
 /**
@@ -36,10 +38,15 @@ export function useFilteredRepos<T extends Repository>(
     // Apply sorting
     if (sortBy === "stars") {
       return [...filtered].sort((a, b) => b.stars - a.stars);
+    } else if (sortBy === "forks") {
+      return [...filtered].sort((a, b) => (b.forks || 0) - (a.forks || 0));
+    } else if (sortBy === "name") {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
     } else {
       return [...filtered].sort(
         (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          new Date(b.updatedAtIso || b.updatedAt).getTime() -
+          new Date(a.updatedAtIso || a.updatedAt).getTime()
       );
     }
   }, [repositories, sortBy, searchQuery]);

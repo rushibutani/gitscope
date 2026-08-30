@@ -49,6 +49,7 @@ export interface ContributionWeek {
 export interface ContributionCalendar {
   totalContributions: number;
   weeks: ContributionWeek[];
+  source: "github" | "repository_updates";
 }
 
 // Transformed Data Types for UI Components
@@ -85,6 +86,7 @@ export interface RepositoryDisplay {
   language: string;
   languageColor: string;
   updatedAt: string;
+  updatedAtIso: string;
   isStale: boolean;
   url: string;
 }
