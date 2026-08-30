@@ -119,7 +119,7 @@ function SearchForm({ value, setValue, submit, loading, validation, inputRef, co
     <div className="relative min-w-0 flex-1">
       {!compact && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 border-r border-border pr-3 font-mono text-xs text-muted">github.com/</span>}
       {compact && <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />}
-      <input ref={inputRef} value={value} onChange={(e) => setValue(e.target.value)} disabled={loading} aria-invalid={!!validation} aria-describedby={validation ? "search-error" : undefined} aria-label="GitHub username" autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="e.g. torvalds" className={`search-input ${compact ? "pl-9" : "pl-[106px]"}`} />
+      <input ref={inputRef} name="github-username" value={value} onChange={(e) => setValue(e.target.value)} disabled={loading} aria-invalid={!!validation} aria-describedby={validation ? "search-error" : undefined} aria-label="GitHub username" autoCapitalize="none" autoComplete="on" spellCheck={false} placeholder="e.g. torvalds" className={`search-input ${compact ? "pl-9" : "pl-[106px]"}`} />
     </div>
     <button className="primary-button min-w-[142px]" disabled={loading} type="submit">{loading ? <><SpinnerIcon /> Analyzing…</> : "Analyze profile"}</button>
     {validation && <p id="search-error" role="alert" className="basis-full text-left text-xs text-danger">{validation}</p>}
