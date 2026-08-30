@@ -85,19 +85,20 @@ export default function ClientPage() {
     router.push(`/?user=${encodeURIComponent(clean.toLowerCase())}`, { scroll: false });
   }
   const loading = pageState === "loading";
+  const showHeaderSearch = pageState !== "empty" || heroPassed;
 
   return <div className="min-h-screen bg-background text-foreground">
     <a href="#main-content" className="skip-link">Skip to content</a>
     <header className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${scrolled ? "border-[#303844] bg-background shadow-[0_8px_24px_rgba(0,0,0,.32)]" : "border-[#272e37] bg-background/95 backdrop-blur-md"}`}>
-      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
-        <button onClick={() => router.push("/")} className="focus-ring rounded-lg text-left" aria-label="GitScope home">
+      <div className={`mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 sm:py-2.5 lg:px-8 ${showHeaderSearch ? "flex-wrap md:flex-nowrap" : "flex-nowrap"}`}>
+        <button onClick={() => router.push("/")} className="focus-ring shrink-0 rounded-lg text-left" aria-label="GitScope home">
           <GitScopeBrand />
         </button>
-        <div className={`header-actions ${pageState !== "empty" || heroPassed ? "header-actions-searching" : ""}`}>
-          <div className={`header-search ${pageState !== "empty" || heroPassed ? "header-search-visible" : ""}`}>
+        <div className={`header-actions ${showHeaderSearch ? "header-actions-searching" : ""}`}>
+          <div className={`header-search ${showHeaderSearch ? "header-search-visible" : ""}`}>
             <SearchForm inputRef={pageState === "empty" ? undefined : inputRef} value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} compact />
           </div>
-          <a href="https://github.com/rushibutani/github-profile-analytics" target="_blank" rel="noreferrer" className="header-repo-link focus-ring" aria-label="View the GitScope repository on GitHub"><GitHubIcon size={17} /><span className="hidden sm:inline">GitHub</span><ExternalLinkIcon /></a>
+          <a href="https://github.com/rushibutani/github-profile-analytics" target="_blank" rel="noreferrer" className="header-repo-link focus-ring w-11 shrink-0 justify-center px-0 sm:w-auto sm:justify-start sm:px-3" aria-label="View the GitScope repository on GitHub"><GitHubIcon size={17} className="shrink-0" /><span className="hidden sm:inline">GitHub</span><ExternalLinkIcon className="hidden shrink-0 sm:block" /></a>
         </div>
       </div>
     </header>
