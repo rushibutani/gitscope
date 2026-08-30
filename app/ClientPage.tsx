@@ -81,7 +81,11 @@ export default function ClientPage() {
     if (!clean) { setValidation("Enter a GitHub username to continue."); inputRef.current?.focus(); return; }
     if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(clean)) { setValidation("Use a valid GitHub username (letters, numbers, and hyphens)."); inputRef.current?.focus(); return; }
     if (loading) return;
-    setValidation(""); setSearchValue(clean); setUsername(clean);
+    // The URL is the source of truth for the selected profile. Updating
+    // `username` here would make the URL-sync effect think this profile was
+    // already loaded and skip the request when navigating from one result to
+    // another.
+    setValidation(""); setSearchValue(clean);
     router.push(`/?user=${encodeURIComponent(clean.toLowerCase())}`, { scroll: false });
   }
   const loading = pageState === "loading";

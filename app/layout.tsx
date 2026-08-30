@@ -16,6 +16,9 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gitscope-insights.vercel.app"),
+  icons: {
+    icon: "/icon.svg",
+  },
   title: "GitScope — GitHub Developer Insights",
   description:
     "Explore public GitHub profiles through repository, language, contribution, and development activity insights.",
