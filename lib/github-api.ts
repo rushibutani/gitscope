@@ -202,7 +202,7 @@ export async function fetchPublicContributionCalendar(
     {
       headers: {
         Accept: "text/html",
-        "User-Agent": "github-profile-analytics",
+        "User-Agent": "gitscope",
       },
       next: { revalidate: 3600 },
     }

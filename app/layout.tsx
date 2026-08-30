@@ -15,6 +15,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://gitscope-insights.vercel.app"),
   title: "GitScope — GitHub Developer Insights",
   description:
     "Explore public GitHub profiles through repository, language, contribution, and development activity insights.",
@@ -25,6 +26,17 @@ export const metadata: Metadata = {
     "Statistics",
     "Contribution Graph",
   ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "GitScope",
+    title: "GitScope — GitHub Developer Insights",
+    description:
+      "Explore public GitHub profiles through repository, language, contribution, and development activity insights.",
+  },
 };
 
 export default function RootLayout({

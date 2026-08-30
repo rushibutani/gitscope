@@ -98,7 +98,7 @@ export default function ClientPage() {
           <div className={`header-search ${showHeaderSearch ? "header-search-visible" : ""}`}>
             <SearchForm inputRef={pageState === "empty" ? undefined : inputRef} value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} compact />
           </div>
-          <a href="https://github.com/rushibutani/github-profile-analytics" target="_blank" rel="noreferrer" className="header-repo-link focus-ring w-11 shrink-0 justify-center px-0 sm:w-auto sm:justify-start sm:px-3" aria-label="View the GitScope repository on GitHub"><GitHubIcon size={17} className="shrink-0" /><span className="hidden sm:inline">GitHub</span><ExternalLinkIcon className="hidden shrink-0 sm:block" /></a>
+          <a href="https://github.com/rushibutani/gitscope" target="_blank" rel="noreferrer" className="header-repo-link focus-ring w-11 shrink-0 justify-center px-0 sm:w-auto sm:justify-start sm:px-3" aria-label="View the GitScope repository on GitHub"><GitHubIcon size={17} className="shrink-0" /><span className="hidden sm:inline">GitHub</span><ExternalLinkIcon className="hidden shrink-0 sm:block" /></a>
         </div>
       </div>
     </header>
