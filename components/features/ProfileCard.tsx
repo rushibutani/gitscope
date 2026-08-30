@@ -7,7 +7,7 @@ export default function ProfileCard({ profile }: { profile: ProfileData }) {
   const website = profile.blog && (profile.blog.startsWith("http") ? profile.blog : `https://${profile.blog}`);
   return <section aria-labelledby="profile-title" className="border-b border-border pb-10">
     <p className="eyebrow mb-6">Profile overview</p>
-    <div className="grid gap-7 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+    <div className="grid gap-7 md:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_minmax(230px,auto)] lg:items-center">
       <Image src={profile.avatarUrl} alt={`${profile.name}'s avatar`} width={96} height={96} priority className="h-20 w-20 rounded-xl bg-surface object-cover ring-1 ring-border sm:h-24 sm:w-24" />
       <div className="min-w-0"><h1 id="profile-title" className="truncate text-3xl font-semibold tracking-[-.03em]">{profile.name}</h1><p className="mt-1 font-mono text-sm text-primary">@{profile.username}</p>
         {profile.bio && <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">{profile.bio}</p>}

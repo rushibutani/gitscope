@@ -12,7 +12,7 @@ export const ACTIVITY_THRESHOLDS = {
  */
 export const REPO_LIMITS = {
   API_ANALYSIS_LIMIT: 10,
-  DISPLAY_TOP_LANGUAGES: 10,
+  DISPLAY_TOP_LANGUAGES: 20,
 } as const;
 
 /**

@@ -1,8 +1,8 @@
-# GitHub Profile Analytics Dashboard
+# GitScope — GitHub Developer Insights
 
-A production-ready, enterprise-grade GitHub profile analytics dashboard built with Next.js 15, TypeScript, and Tailwind CSS. This application transforms raw GitHub API data into meaningful insights for recruiters and developers.
+A production-ready GitHub developer insights dashboard built with Next.js 15, TypeScript, and Tailwind CSS. GitScope transforms public GitHub API data into meaningful insights for recruiters and developers.
 
-![GitHub Analytics Dashboard](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
+![GitScope dashboard](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)
 

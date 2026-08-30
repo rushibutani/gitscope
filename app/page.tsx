@@ -15,9 +15,9 @@ export async function generateMetadata({
 
   if (!username) {
     return {
-      title: "GitHub Analytics | Developer Intelligence",
+      title: "GitScope — GitHub Developer Insights",
       description:
-        "Developer insights from public GitHub data. Explore repositories, languages, and public activity signals.",
+        "Explore public GitHub profiles through repository, language, contribution, and development activity insights.",
     };
   }
 
@@ -27,13 +27,13 @@ export async function generateMetadata({
     if (result.data) {
       const { profile } = result.data;
       return {
-        title: `${profile.name} (@${profile.username}) | GitHub Analytics`,
-        description: `Public GitHub profile insights for ${profile.name}: ${profile.publicRepos} repositories and ${profile.followers} followers.`,
+        title: `${profile.name} (@${profile.username}) — GitScope`,
+        description: `Explore public GitHub repository, language, contribution, and activity insights for @${profile.username}.`,
         openGraph: {
-          title: `${profile.name}'s GitHub Analytics`,
+          title: `${profile.name} (@${profile.username}) — GitScope`,
           description:
             profile.bio ||
-            `View ${profile.name}'s GitHub profile analytics and insights`,
+            `Explore public GitHub repository, language, contribution, and activity insights for @${profile.username}.`,
           images: [profile.avatarUrl],
         },
       };
@@ -43,8 +43,8 @@ export async function generateMetadata({
   }
 
   return {
-    title: `@${username} | GitHub Profile Analytics`,
-    description: `View GitHub profile analytics and insights for @${username}`,
+    title: `@${username} — GitScope`,
+    description: `Explore public GitHub repository, language, contribution, and activity insights for @${username}.`,
   };
 }
 

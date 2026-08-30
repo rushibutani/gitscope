@@ -15,9 +15,9 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GitHub Analytics | Developer Intelligence",
+  title: "GitScope — GitHub Developer Insights",
   description:
-    "Developer insights from public GitHub data. Explore repositories, languages, and public activity signals.",
+    "Explore public GitHub profiles through repository, language, contribution, and development activity insights.",
   keywords: [
     "GitHub",
     "Analytics",

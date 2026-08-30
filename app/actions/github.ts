@@ -41,9 +41,8 @@ export async function fetchGitHubAnalytics(username: string): Promise<{
 
     // Sanitize username to prevent injection
     const normalizedUsername = username.trim().replace(/^@+/, "");
-    cleanUsername = normalizedUsername.replace(/[^a-zA-Z0-9-]/g, "");
-
-    if (cleanUsername !== normalizedUsername) {
+    cleanUsername = normalizedUsername;
+    if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(cleanUsername)) {
       return {
         error: {
           message: "Username contains invalid characters",

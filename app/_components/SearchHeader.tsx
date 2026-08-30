@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import SearchForm from "../../components/layout/SearchForm";
-import { GitHubIcon } from "../../components/ui";
+import GitScopeBrand from "../../components/brand/GitScopeBrand";
 
 interface SearchHeaderProps {
   hasResults?: boolean;
@@ -14,14 +14,7 @@ export default function SearchHeader({
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {hasResults && (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
-                <GitHubIcon size={16} className="text-foreground/60" />
-              </div>
-              <h1 className="text-lg font-medium text-foreground/90">
-                GitHub Analytics
-              </h1>
-            </div>
+            <GitScopeBrand />
           )}
           <Suspense
             fallback={

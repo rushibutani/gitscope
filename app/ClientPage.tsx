@@ -11,6 +11,7 @@ import { fetchGitHubAnalytics } from "./actions/github";
 import type { ApiError, GitHubAnalytics, RepositoryDisplay } from "../types/github";
 import { ActivityIcon, ExternalLinkIcon, GitHubIcon, LayersIcon, RepositoryIcon, SearchIcon, SpinnerIcon } from "../components/ui";
 import { formatCompactNumber } from "../lib/utils/formatting";
+import GitScopeBrand from "../components/brand/GitScopeBrand";
 
 type PageState = "empty" | "loading" | "error" | "success";
 const normalizeUsername = (value: string) => value.trim().replace(/^@+/, "");
@@ -28,19 +29,32 @@ export default function ClientPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const [heroPassed, setHeroPassed] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const requestIdRef = useRef(0);
 
   async function loadProfile(user: string) {
+    const requestId = ++requestIdRef.current;
     setPageState("loading"); setError(null);
     const result = await fetchGitHubAnalytics(user);
+    if (requestId !== requestIdRef.current) return;
     if (result.error) { setError(result.error); setPageState("error"); return; }
     if (result.data) { setAnalytics(result.data); setPageState("success"); }
   }
 
   useEffect(() => {
-    if (initialUser) void loadProfile(initialUser);
-    // The initial URL is intentionally read once on mount.
+    const urlUser = normalizeUsername(searchParams.get("user") || "");
+    if (!urlUser) {
+      requestIdRef.current++;
+      setUsername(""); setSearchValue(""); setAnalytics(null); setError(null); setPageState("empty");
+      return;
+    }
+    const isCurrentUser = urlUser.toLowerCase() === username.toLowerCase();
+    const requestAlreadyStarted = requestIdRef.current > 0;
+    if (isCurrentUser && (pageState === "success" || (pageState === "loading" && requestAlreadyStarted))) return;
+    setUsername(urlUser); setSearchValue(urlUser); void loadProfile(urlUser);
+    // Reconcile state from the URL so browser Back and Forward restore profiles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
   useEffect(() => {
     if (pageState !== "empty") { setHeroPassed(true); return; }
     const hero = heroRef.current;
@@ -49,6 +63,12 @@ export default function ClientPage() {
     observer.observe(hero);
     return () => observer.disconnect();
   }, [pageState]);
+  useEffect(() => {
+    const updateHeader = () => setScrolled(window.scrollY > 4);
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "/" && !event.metaKey && !event.ctrlKey && !["INPUT", "TEXTAREA"].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); inputRef.current?.focus(); }
@@ -60,26 +80,28 @@ export default function ClientPage() {
     const clean = normalizeUsername(value);
     if (!clean) { setValidation("Enter a GitHub username to continue."); inputRef.current?.focus(); return; }
     if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(clean)) { setValidation("Use a valid GitHub username (letters, numbers, and hyphens)."); inputRef.current?.focus(); return; }
+    if (loading) return;
     setValidation(""); setSearchValue(clean); setUsername(clean);
     router.push(`/?user=${encodeURIComponent(clean.toLowerCase())}`, { scroll: false });
-    void loadProfile(clean);
   }
   const loading = pageState === "loading";
 
   return <div className="min-h-screen bg-background text-foreground">
     <a href="#main-content" className="skip-link">Skip to content</a>
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 md:h-16 md:flex-row md:items-center md:justify-between md:py-0 lg:px-8">
-        <button onClick={() => { router.push("/"); setPageState("empty"); setAnalytics(null); setSearchValue(""); }} className="focus-ring flex items-center gap-3 rounded-lg text-left" aria-label="GitHub Analytics home">
-          <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface"><GitHubIcon size={17} /></span>
-          <span><span className="block text-sm font-semibold tracking-tight">GitHub Analytics</span><span className="block text-[10px] uppercase tracking-[.16em] text-muted">Developer intelligence</span></span>
+    <header className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${scrolled ? "border-[#303844] bg-background shadow-[0_8px_24px_rgba(0,0,0,.32)]" : "border-[#272e37] bg-background/95 backdrop-blur-md"}`}>
+      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
+        <button onClick={() => router.push("/")} className="focus-ring rounded-lg text-left" aria-label="GitScope home">
+          <GitScopeBrand />
         </button>
-        <div className={`header-search ${pageState !== "empty" || heroPassed ? "header-search-visible" : ""}`}>
-          <SearchForm inputRef={pageState === "empty" ? undefined : inputRef} value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} compact />
+        <div className={`header-actions ${pageState !== "empty" || heroPassed ? "header-actions-searching" : ""}`}>
+          <div className={`header-search ${pageState !== "empty" || heroPassed ? "header-search-visible" : ""}`}>
+            <SearchForm inputRef={pageState === "empty" ? undefined : inputRef} value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} compact />
+          </div>
+          <a href="https://github.com/rushibutani/github-profile-analytics" target="_blank" rel="noreferrer" className="header-repo-link focus-ring" aria-label="View the GitScope repository on GitHub"><GitHubIcon size={17} /><span className="hidden sm:inline">GitHub</span><ExternalLinkIcon /></a>
         </div>
       </div>
     </header>
-    <main id="main-content" className="mx-auto min-h-[calc(100vh-9rem)] w-full max-w-7xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+    <main id="main-content" aria-busy={loading} className="mx-auto min-h-[calc(100vh-9rem)] w-full max-w-7xl px-4 py-9 sm:px-6 md:py-12 lg:px-8">
       {pageState === "empty" && <LandingSearch value={searchValue} setValue={setSearchValue} submit={submit} loading={loading} validation={validation} inputRef={inputRef} heroRef={heroRef} />}
       {pageState === "loading" && <DashboardSkeleton />}
       {pageState === "error" && error && <ErrorState error={error} username={username} retry={() => void loadProfile(username)} focusSearch={() => inputRef.current?.focus()} />}
@@ -98,13 +120,13 @@ function SearchForm({ value, setValue, submit, loading, validation, inputRef, co
       {compact && <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />}
       <input ref={inputRef} value={value} onChange={(e) => setValue(e.target.value)} disabled={loading} aria-invalid={!!validation} aria-describedby={validation ? "search-error" : undefined} aria-label="GitHub username" autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="e.g. torvalds" className={`search-input ${compact ? "pl-9" : "pl-[106px]"}`} />
     </div>
-    <button className="primary-button" disabled={loading} type="submit">{loading ? <><SpinnerIcon /> Analyzing…</> : "Analyze profile"}</button>
+    <button className="primary-button min-w-[142px]" disabled={loading} type="submit">{loading ? <><SpinnerIcon /> Analyzing…</> : "Analyze profile"}</button>
     {validation && <p id="search-error" role="alert" className="basis-full text-left text-xs text-danger">{validation}</p>}
   </form>;
 }
 
-function LandingSearch(props: SearchProps & { heroRef: React.RefObject<HTMLElement | null> }) {
-  return <section ref={props.heroRef} className="mx-auto flex max-w-5xl flex-col items-center pt-8 text-center md:pt-16">
+function LandingSearch({ heroRef, ...props }: SearchProps & { heroRef: React.RefObject<HTMLElement | null> }) {
+  return <section ref={heroRef} className="mx-auto flex max-w-5xl flex-col items-center pt-5 text-center md:pt-[clamp(2rem,6vh,3.5rem)]">
     <p className="eyebrow">GitHub developer insights</p>
     <h1 className="mt-5 max-w-3xl text-balance text-4xl font-semibold tracking-[-.04em] sm:text-5xl">Understand any GitHub profile at a glance.</h1>
     <p className="mt-5 max-w-2xl text-balance text-base leading-7 text-muted">Explore repositories, languages, activity patterns, and public development signals from GitHub data.</p>

@@ -5,7 +5,7 @@
 :root{--background:#090c10;--foreground:#edf0f3;--primary:#3ddc84;--secondary:#78a9ff;--accent:#3ddc84;--border:#20262e;--muted:#a2abb5;--card:#0d1117;--surface:#0d1117;--surface-2:#151b23;--success:#3ddc84;--warning:#d29922;--danger:#f87171;--accent-bg:rgba(61,220,132,.08);--font-sans:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",monospace;--font-display:var(--font-sans)}
 *{box-sizing:border-box;border-color:var(--border)}
 html{color-scheme:dark;scroll-behavior:smooth}
-body{margin:0;background:var(--background);color:var(--foreground);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+body{margin:0;overflow-x:hidden;background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:16px;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit}button,a{-webkit-tap-highlight-color:transparent}
 ::selection{background:rgba(61,220,132,.2);color:var(--foreground)}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#29313b;border-radius:4px}::-webkit-scrollbar-track{background:var(--background)}
@@ -15,22 +15,27 @@ button,input,select{font:inherit}button,a{-webkit-tap-highlight-color:transparen
   .focus-ring{@apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background}
   .eyebrow{@apply text-[11px] font-semibold uppercase tracking-[.18em] text-primary}
   .search-form{@apply mx-auto flex w-full flex-wrap items-stretch gap-2}
-  .header-search{@apply pointer-events-none max-h-0 w-full -translate-y-2 overflow-hidden opacity-0 transition-all duration-300 md:max-w-[520px]}
+  .header-actions{@apply ml-auto flex items-center justify-end}
+  .header-actions-searching{@apply w-full md:w-auto md:flex-1}
+  .header-search{@apply pointer-events-none max-h-0 w-full -translate-y-2 overflow-hidden opacity-0 transition-all duration-300 md:ml-auto md:max-w-[520px]}
   .header-search-visible{@apply pointer-events-auto max-h-24 translate-y-0 overflow-visible opacity-100}
+  .header-repo-link{@apply inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-sm font-medium text-muted outline-none transition-colors duration-150 hover:border-[#3a4450] hover:text-foreground}
+  .header-actions-searching .header-repo-link{@apply pointer-events-none hidden opacity-0}
   .search-input,.control-input{@apply h-11 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted hover:border-[#343c47] focus:border-primary focus:ring-2 focus:ring-primary disabled:cursor-wait disabled:opacity-60}
   .primary-button{@apply inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-[#07130c] outline-none transition-colors duration-150 hover:bg-[#55e294] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55}
   .secondary-button{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-surface px-5 text-sm font-medium outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-primary}
   .preview-item{@apply border-t border-border px-6 py-7 first:border-t-0 md:border-t-0 md:px-8 md:py-8}
   .metric-strip{@apply grid grid-cols-2 border-y border-border md:grid-cols-3}
   .metric-item{@apply border-b border-r border-border px-4 py-6 last:border-r-0 md:border-b-0 md:px-6}
-  .metric-item strong{@apply block font-mono text-2xl font-semibold tracking-tight}
-  .metric-item span{@apply mt-2 block text-[11px] uppercase tracking-wider text-muted}
+  .metric-item strong{@apply block font-mono text-[1.7rem] font-semibold tracking-tight}
+  .metric-item span{@apply mt-2 block text-xs uppercase tracking-wider text-muted}
   .highlight-row{@apply flex min-w-0 flex-col border-t border-border px-5 py-6 first:border-t-0 outline-none transition-colors hover:bg-surface focus-visible:bg-surface md:border-t-0}
   .text-link{@apply inline-flex items-center gap-1.5 rounded text-foreground underline decoration-border underline-offset-4 outline-none transition-colors hover:text-primary hover:decoration-primary focus-visible:ring-2 focus-visible:ring-primary}
   .heat-cell{@apply h-[12px] w-[12px] rounded-[2px] border border-black/10 outline-none transition-[filter] hover:brightness-125 focus-visible:ring-1 focus-visible:ring-primary}
-  .repo-row{@apply grid gap-4 px-4 py-5 transition-colors hover:bg-surface md:grid-cols-[minmax(0,1fr)_140px_90px_90px_130px] md:items-center}
+  .repo-row{@apply grid gap-4 px-4 py-5 transition-colors duration-150 hover:bg-surface md:grid-cols-[minmax(0,1fr)_140px_90px_90px_130px] md:items-center}
   .skeleton{@apply animate-pulse rounded-lg bg-surface-2}
 }
 
 @media(max-width:767px){.search-form{display:grid;grid-template-columns:minmax(0,1fr) auto}.search-form p{grid-column:1/-1}.metric-item:nth-child(2n){border-right:0}.metric-item:last-child{border-bottom:0}.heat-cell{height:12px;width:12px}}
+@media(max-width:430px){.search-form:not(.header-search .search-form){grid-template-columns:1fr}.search-form:not(.header-search .search-form) .primary-button{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
