@@ -95,7 +95,7 @@ export default function ClientPage() {
     <a href="#main-content" className="skip-link">Skip to content</a>
     <header className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${scrolled ? "border-[#303844] bg-background shadow-[0_8px_24px_rgba(0,0,0,.32)]" : "border-[#272e37] bg-background/95 backdrop-blur-md"}`}>
       <div className={`mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 sm:py-2.5 lg:px-8 ${showHeaderSearch ? "flex-wrap md:flex-nowrap" : "flex-nowrap"}`}>
-        <button onClick={() => router.push("/")} className="focus-ring shrink-0 rounded-lg text-left" aria-label="GitScope home">
+        <button onClick={() => router.push("/")} className="focus-ring shrink-0 rounded-lg text-left">
           <GitScopeBrand />
         </button>
         <div className={`header-actions ${showHeaderSearch ? "header-actions-searching" : ""}`}>

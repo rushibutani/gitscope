@@ -11,7 +11,7 @@ A production-ready GitHub developer insights dashboard built with Next.js 15, Ty
 ### Core Analytics
 
 - **Profile Overview**: Display user avatar, bio, followers, following, and account age
-- **Contribution Heatmap**: 12-month contribution activity visualization with interactive tooltips
+- **Contribution Calendar**: GitHub's real 12-month public contribution calendar, readable by keyboard (one Tab stop, arrow keys between days) and by tap
 - **Language Distribution**: Donut chart showing programming language usage across repositories
 - **Repository Insights**: Sortable, searchable table with star/fork counts and activity status
 - **Activity Score**: Composite metric based on contributions, stars, and recent activity
@@ -155,9 +155,13 @@ The app works without JavaScript for initial load, with enhanced functionality w
 
 Raw GitHub API responses are transformed server-side into UI-ready data structures, minimizing client payload.
 
-### 4. Synthetic Contribution Data
+### 4. Contribution Data, with a Labelled Fallback
 
-GitHub's contribution graph requires GraphQL API or web scraping. We generate synthetic data based on repository push activity for demonstration purposes.
+GitHub's REST API doesn't expose contribution counts, so GitScope reads the public calendar GitHub renders for every profile (`github.com/users/<username>/contributions`, cached for an hour) and uses its exact daily counts and intensity levels.
+
+That page isn't a formal API. If it can't be fetched or parsed, the chart falls back to the dates the user's public repositories were last updated, and says so: its title changes to "Public Repository Activity" and a note explains what the cells represent. An estimate is never presented as GitHub's count.
+
+Language share and the repository figures are calculated from up to 100 most recently updated repositories, with languages fetched for the ten most recently updated original (non-fork) repositories.
 
 ### 5. Rate Limiting Strategy
 
@@ -204,7 +208,7 @@ The activity score (0-100) is a composite metric:
 
 ## 🚧 Potential Enhancements
 
-- [ ] Real contribution graph via GitHub GraphQL API
+- [ ] Read contributions through the GitHub GraphQL API, removing the dependency on the profile page's markup
 - [ ] Profile comparison mode (side-by-side)
 - [ ] Recent search history (localStorage)
 - [ ] Export to PDF functionality
