@@ -101,12 +101,23 @@ export interface ActivityMetrics {
   activeReposCount: number;
 }
 
+/** What the figures are drawn from, so the page can say so beside them. */
+export interface AnalysisCoverage {
+  /** The account's public repositories, forks included. */
+  publicRepos: number;
+  /** How many of them were fetched: the most recently updated, up to 100. */
+  fetchedRepos: number;
+  /** Original repositories whose languages were read: the most recently updated, up to 10. */
+  languageRepos: number;
+}
+
 export interface GitHubAnalytics {
   profile: ProfileData;
   languages: LanguageStats[];
   repositories: RepositoryDisplay[];
   contributions: ContributionCalendar;
   activity: ActivityMetrics;
+  coverage: AnalysisCoverage;
 }
 
 export interface ApiError {

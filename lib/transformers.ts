@@ -228,5 +228,10 @@ export function transformGitHubData(
     repositories: transformRepositories(repositories),
     contributions,
     activity: calculateActivityMetrics(repositories, contributions),
+    coverage: {
+      publicRepos: user.public_repos,
+      fetchedRepos: repositories.length,
+      languageRepos: languagesData.size,
+    },
   };
 }
