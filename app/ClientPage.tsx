@@ -142,21 +142,24 @@ function LandingSearch({ heroRef, ...props }: SearchProps & { heroRef: React.Ref
 }
 
 function Dashboard({ analytics }: { analytics: GitHubAnalytics }) {
-  const { profile, activity, repositories, languages, contributions } = analytics;
+  const { profile, activity, repositories, languages, contributions, coverage } = analytics;
   const totalForks = repositories.reduce((sum, repo) => sum + repo.forks, 0);
   return <div className="space-y-14"><ProfileCard profile={profile} />
     <section aria-label="Key profile metrics" className="metric-strip">{[["Total stars", activity.totalStars], ["Total forks", totalForks], [contributions.source === "github" ? "Contributions" : "Updated repos", contributions.totalContributions]].map(([label, value]) => <div key={label} className="metric-item"><strong title={Number(value).toLocaleString()}>{formatCompactNumber(Number(value))}</strong><span>{label}</span></div>)}</section>
     {!repositories.length ? <section className="rounded-xl border border-border bg-surface px-6 py-14 text-center"><p className="eyebrow">No repositories yet</p><h2 className="mt-3 text-2xl font-semibold">Nothing to analyze</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted">This account has no original public repositories, so language, activity, and repository insights aren’t available yet.</p></section> : <><ContributionChart contributions={contributions} activity={activity} />
-    <div className="grid gap-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,.55fr)]"><LanguageChart languages={languages} /><ProfileSignals analytics={analytics} /></div>
-    <RepositoryHighlights repositories={repositories} /><RepoTable repositories={repositories} /></>}
+    <div className="grid gap-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,.55fr)]"><LanguageChart languages={languages} coverage={coverage} /><ProfileSignals analytics={analytics} /></div>
+    <RepositoryHighlights repositories={repositories} /><RepoTable repositories={repositories} coverage={coverage} /></>}
   </div>;
 }
 
 function ProfileSignals({ analytics }: { analytics: GitHubAnalytics }) {
-  const { languages, repositories, activity } = analytics; const top = languages[0];
-  const totalStars = repositories.reduce((sum, r) => sum + r.stars, 0); const topShare = totalStars && repositories[0] ? Math.round((repositories[0].stars / totalStars) * 100) : 0;
+  const { languages, repositories, activity, coverage } = analytics; const top = languages[0];
+  // The share and the name come from the same repository: the most starred one.
   const topRepo = [...repositories].sort((a, b) => b.stars - a.stars)[0];
-  const signals = [["Primary language", top ? `${top.language} · ${top.percentage.toFixed(1)}% of analyzed code` : "No language data"], ["Language breadth", languages.length ? `${languages.length} language${languages.length === 1 ? "" : "s"} represented` : "Not available"], ["Repository concentration", totalStars ? `${topShare}% of stars belong to the top repository (${topRepo.name})` : "No stars across analyzed repositories"], ["Recent maintenance", `${activity.activeReposCount} repos updated in the last 3 months`]];
+  const totalStars = repositories.reduce((sum, r) => sum + r.stars, 0); const topShare = totalStars && topRepo ? Math.round((topRepo.stars / totalStars) * 100) : 0;
+  // Past 100 public repositories only the latest 100 are read, so counts say what they cover.
+  const latest = coverage.publicRepos > coverage.fetchedRepos ? ` of the latest ${coverage.fetchedRepos}` : "";
+  const signals = [["Primary language", top ? `${top.language} · ${top.percentage.toFixed(1)}% of analyzed code` : "No language data"], ["Language breadth", languages.length ? `${languages.length} language${languages.length === 1 ? "" : "s"} represented` : "Not available"], ["Repository concentration", totalStars ? `${topShare}% of stars${latest ? ` in the latest ${coverage.fetchedRepos} repositories` : ""} belong to the top repository (${topRepo.name})` : "No stars across analyzed repositories"], ["Recent maintenance", `${activity.activeReposCount}${latest} repos updated in the last 3 months`]];
   return <section><SectionHeading title="Profile Signals" description="Deterministic observations from public data." /><dl className="mt-6 divide-y divide-border border-y border-border">{signals.map(([term, detail]) => <div key={term} className="py-4"><dt className="text-xs uppercase tracking-wider text-muted">{term}</dt><dd className="mt-1.5 text-sm leading-6">{detail}</dd></div>)}</dl></section>;
 }
 
